@@ -10,7 +10,7 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 
 @app.route("/", methods=['GET'])
 def home():
-    return "👋 Olá! O TECBOT está ativo!"
+    return "👋 Olá! O THEKKYBOT está ativo!"
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
