@@ -52,3 +52,4 @@ def webhook():
         print(f"Erro ao enviar mensagem pelo Twilio: {str(e)}")
     
     return "OK", 200
+
