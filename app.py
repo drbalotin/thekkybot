@@ -1,45 +1,47 @@
 from flask import Flask, request
+from twilio.rest import Client
 import openai
-from twilio.twiml.messaging_response import MessagingResponse
 import os
 
-app = Flask(__name__)
+# Configurações
+account_sid = os.environ.get('ACCOUNT_SID')
+auth_token = os.environ.get('AUTH_TOKEN')
+twilio_whatsapp_number = os.environ.get('TWILIO_WHATSAPP_NUMBER')
+openai_api_key = os.environ.get('OPENAI_API_KEY')
 
-# Chave da OpenAI pega das variáveis de ambiente
-openai.api_key = os.getenv('OPENAI_API_KEY')
+client = Client(account_sid, auth_token)
+
+# Iniciar o app Flask
+app = Flask(__name__)
+openai.api_key = openai_api_key
 
 @app.route("/", methods=['GET'])
 def home():
-    return "👋 Olá! O THEKKYBOT está ativo!"
+    return "👋 Olá! O TECBOT está ativo!"
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
     incoming_msg = request.values.get('Body', '').strip()
-    sender = request.values.get('From', '')
+    from_number = request.values.get('From', '')
 
-    if not incoming_msg:
-        return "Nenhuma mensagem recebida", 400
+    if incoming_msg:
+        try:
+            gpt_response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é o THEKKYBOT, assistente inteligente da empresa THEKKY."},
+                    {"role": "user", "content": incoming_msg}
+                ]
+            )
+            reply = gpt_response.choices[0].message['content']
+        except Exception as e:
+            print(f"Erro ao consultar OpenAI: {e}")
+            reply = "Desculpe, estou fora do ar no momento. Por favor, tente mais tarde."
 
-    try:
-        # Faz a consulta ao ChatGPT
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Você é um assistente educado e prestativo."},
-                {"role": "user", "content": incoming_msg}
-            ]
+        # Enviar resposta via WhatsApp
+        client.messages.create(
+            from_=twilio_whatsapp_number,
+            body=reply,
+            to=from_number
         )
-
-        resposta_chatgpt = response['choices'][0]['message']['content'].strip()
-
-    except Exception as e:
-        resposta_chatgpt = "Desculpe, houve um erro ao processar sua mensagem."
-
-    resp = MessagingResponse()
-    msg = resp.message()
-    msg.body(resposta_chatgpt)
-
-    return str(resp)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    return "OK", 200
